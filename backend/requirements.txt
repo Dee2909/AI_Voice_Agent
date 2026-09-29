@@ -5,8 +5,10 @@ pydantic-settings
 sqlalchemy
 alembic
 psycopg2-binary
+psycopg[binary]
 redis
 structlog
 pytest
 pytest-asyncio
 httpx
+jsonschema

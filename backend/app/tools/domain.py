@@ -36,6 +36,19 @@ def _get_db_session() -> Any:
     return SessionLocal()
 
 
+def _safe_uuid(val: Any) -> Any:
+    if val is None:
+        return None
+    import uuid as _uuid
+    if isinstance(val, _uuid.UUID):
+        return val
+    try:
+        return _uuid.UUID(str(val))
+    except (ValueError, AttributeError):
+        return _uuid.uuid5(_uuid.NAMESPACE_DNS, str(val))
+
+
+
 # ══════════════════════════════════════════════════════════════════
 # PHASE 3 — CONTACT IDENTITY TOOLS
 # ══════════════════════════════════════════════════════════════════
@@ -264,12 +277,36 @@ async def cancel_delegation(arguments: dict[str, Any]) -> dict[str, Any]:
 
 
 # ══════════════════════════════════════════════════════════════════
-# STUBS — Phase 5+ (call summaries, callbacks, notifications)
+# PHASE 5+ — CONTEXT, MEMORY, SUMMARIES, CALLBACKS, NOTIFICATIONS & TELEPHONY
 # ══════════════════════════════════════════════════════════════════
 
 @tool(ToolMetadata(
+    name="get_contact_context",
+    description="Retrieve permission-filtered reusable memory facts for a contact.",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "contact_id": {"type": "string"},
+            "relationship": {"type": "string"},
+        },
+        "required": ["contact_id"],
+    },
+    sensitive=True, llm_allowed=True, user_confirmation_required=False,
+))
+async def get_contact_context(arguments: dict[str, Any]) -> dict[str, Any]:
+    from app.services.memory import MemoryService
+    contact_id_str = arguments["contact_id"]
+    contact_uuid = _safe_uuid(contact_id_str)
+    rel = arguments.get("relationship", "UNKNOWN")
+    with _get_db_session() as db:
+        mem_svc = MemoryService(db, "user_123")
+        facts = mem_svc.get_contact_context(contact_uuid, relationship=rel)
+        return {"contact_id": contact_id_str, "context": facts}
+
+
+@tool(ToolMetadata(
     name="save_message",
-    description="Save a message from the caller.",
+    description="Save a message from the caller into call transcript and follow-up action.",
     input_schema={
         "type": "object",
         "properties": {"call_id": {"type": "string"}, "message": {"type": "string"}},
@@ -278,35 +315,135 @@ async def cancel_delegation(arguments: dict[str, Any]) -> dict[str, Any]:
     sensitive=False, llm_allowed=True, user_confirmation_required=False,
 ))
 async def save_message(arguments: dict[str, Any]) -> dict[str, Any]:
-    return {"status": "saved"}
+    from app.models.call import CallAction, CallTranscript, SpeakerType, ActionType, ActionStatus
+    call_id = _safe_uuid(arguments["call_id"])
+    msg = arguments["message"]
+    with _get_db_session() as db:
+        transcript = CallTranscript(
+            call_id=call_id,
+            speaker=SpeakerType.CALLER,
+            text=msg,
+            language="en",
+        )
+        action = CallAction(
+            call_id=call_id,
+            action_type=ActionType.TASK,
+            description=f"Message taken: {msg}",
+            status=ActionStatus.PENDING,
+        )
+        db.add_all([transcript, action])
+        db.commit()
+        return {"status": "saved", "call_id": str(call_id)}
 
 
 @tool(ToolMetadata(
     name="save_call_summary",
-    description="Save a post-call summary.",
+    description="Persist post-call summary, reason, and urgency in the database.",
     input_schema={
         "type": "object",
-        "properties": {"call_id": {"type": "string"}, "summary": {"type": "string"}, "urgency": {"type": "string"}},
+        "properties": {
+            "call_id": {"type": "string"},
+            "summary": {"type": "string"},
+            "reason": {"type": "string"},
+            "urgency": {"type": "string"},
+        },
         "required": ["call_id", "summary"],
     },
     sensitive=False, llm_allowed=True, user_confirmation_required=False,
 ))
 async def save_call_summary(arguments: dict[str, Any]) -> dict[str, Any]:
-    return {"status": "saved"}
+    from app.models.call import CallSummary, UrgencyLevel
+    call_id = _safe_uuid(arguments["call_id"])
+    summary_text = arguments["summary"]
+    reason = arguments.get("reason", "Inquiry")
+    urgency_str = arguments.get("urgency", "NORMAL").upper()
+    urgency = UrgencyLevel(urgency_str) if urgency_str in UrgencyLevel.__members__ else UrgencyLevel.NORMAL
+
+    with _get_db_session() as db:
+        existing = db.query(CallSummary).filter(CallSummary.call_id == call_id).first()
+        if existing:
+            existing.summary_text = summary_text
+            existing.reason = reason
+            existing.urgency_level = urgency
+        else:
+            new_summary = CallSummary(
+                call_id=call_id,
+                summary_text=summary_text,
+                reason=reason,
+                urgency_level=urgency,
+            )
+            db.add(new_summary)
+        db.commit()
+        return {"status": "saved", "call_id": str(call_id)}
 
 
 @tool(ToolMetadata(
     name="create_callback_request",
-    description="Request a callback for the caller.",
+    description="Create a callback follow-up task and alert the user.",
     input_schema={
         "type": "object",
-        "properties": {"contact_id": {"type": "string"}, "reason": {"type": "string"}},
-        "required": ["contact_id", "reason"],
+        "properties": {
+            "contact_id": {"type": "string"},
+            "call_id": {"type": "string"},
+            "phone_number": {"type": "string"},
+            "reason": {"type": "string"},
+            "preferred_time": {"type": "string"},
+        },
+        "required": ["reason"],
     },
     sensitive=False, llm_allowed=True, user_confirmation_required=False,
 ))
 async def create_callback_request(arguments: dict[str, Any]) -> dict[str, Any]:
-    return {"status": "PENDING"}
+    from app.models.call import Callback, ActionStatus, UrgencyLevel
+    from app.models.notification import Notification, NotificationType
+
+    reason = arguments["reason"]
+    preferred_time = arguments.get("preferred_time")
+    contact_id = _safe_uuid(arguments.get("contact_id"))
+    call_id = _safe_uuid(arguments.get("call_id"))
+    phone = arguments.get("phone_number", "Unknown")
+
+    with _get_db_session() as db:
+        cb = Callback(
+            user_id="user_123",
+            contact_id=contact_id,
+            call_id=call_id,
+            phone_number=phone,
+            reason=reason,
+            preferred_time=preferred_time,
+            status=ActionStatus.PENDING,
+        )
+        db.add(cb)
+        notif = Notification(
+            user_id="user_123",
+            call_id=call_id,
+            title=f"📞 Callback Requested: {phone}",
+            body=f"Reason: {reason}" + (f" (Time: {preferred_time})" if preferred_time else ""),
+            notification_type=NotificationType.CALLBACK_REQUEST,
+            urgency=UrgencyLevel.IMPORTANT,
+        )
+        db.add(notif)
+        db.commit()
+        db.refresh(cb)
+        return {"status": "PENDING", "callback_id": str(cb.id)}
+
+
+@tool(ToolMetadata(
+    name="schedule_callback",
+    description="Create scheduled callback action. Explicit user permission required.",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "phone_number": {"type": "string"},
+            "reason": {"type": "string"},
+            "preferred_time": {"type": "string"},
+        },
+        "required": ["phone_number", "reason"],
+    },
+    sensitive=True, llm_allowed=False, user_confirmation_required=True,
+))
+async def schedule_callback(arguments: dict[str, Any]) -> dict[str, Any]:
+    return await create_callback_request(arguments)
 
 
 @tool(ToolMetadata(
@@ -314,18 +451,41 @@ async def create_callback_request(arguments: dict[str, Any]) -> dict[str, Any]:
     description="Send a notification to the user.",
     input_schema={
         "type": "object",
-        "properties": {"message": {"type": "string"}, "urgency": {"type": "string"}},
+        "properties": {
+            "message": {"type": "string"},
+            "urgency": {"type": "string"},
+            "call_id": {"type": "string"},
+        },
         "required": ["message"],
     },
     sensitive=False, llm_allowed=True, user_confirmation_required=False,
 ))
 async def notify_user(arguments: dict[str, Any]) -> dict[str, Any]:
-    return {"status": "notified"}
+    from app.models.notification import Notification, NotificationType
+    from app.models.call import UrgencyLevel
+
+    msg = arguments["message"]
+    urgency_str = arguments.get("urgency", "NORMAL").upper()
+    urgency = UrgencyLevel(urgency_str) if urgency_str in UrgencyLevel.__members__ else UrgencyLevel.NORMAL
+    call_id = _safe_uuid(arguments.get("call_id"))
+
+    with _get_db_session() as db:
+        notif = Notification(
+            user_id="user_123",
+            call_id=call_id,
+            title="Assistant Alert",
+            body=msg,
+            notification_type=NotificationType.POLICY_ALERT if urgency == UrgencyLevel.NORMAL else NotificationType.URGENT_CALL,
+            urgency=urgency,
+        )
+        db.add(notif)
+        db.commit()
+        return {"status": "notified", "notification_id": str(notif.id)}
 
 
 @tool(ToolMetadata(
     name="mark_potentially_urgent",
-    description="Flag a call as potentially urgent for user review.",
+    description="Flag a call as potentially urgent, record urgency event, and dispatch alert.",
     input_schema={
         "type": "object",
         "properties": {"call_id": {"type": "string"}, "reason": {"type": "string"}},
@@ -334,4 +494,69 @@ async def notify_user(arguments: dict[str, Any]) -> dict[str, Any]:
     sensitive=False, llm_allowed=True, user_confirmation_required=False,
 ))
 async def mark_potentially_urgent(arguments: dict[str, Any]) -> dict[str, Any]:
-    return {"status": "marked"}
+    from app.models.call import UrgencyEvent, UrgencyLevel
+    from app.models.notification import Notification, NotificationType
+
+    call_id = _safe_uuid(arguments["call_id"])
+    reason = arguments["reason"]
+
+    with _get_db_session() as db:
+        event = UrgencyEvent(
+            call_id=call_id,
+            urgency_level=UrgencyLevel.POTENTIALLY_URGENT,
+            reason=reason,
+            alert_dispatched=True,
+            reviewed_by_user=False,
+        )
+        db.add(event)
+        notif = Notification(
+            user_id="user_123",
+            call_id=call_id,
+            title="⚠️ Potentially Urgent Call Event",
+            body=f"Call {call_id} flagged: {reason}",
+            notification_type=NotificationType.URGENT_CALL,
+            urgency=UrgencyLevel.POTENTIALLY_URGENT,
+        )
+        db.add(notif)
+        db.commit()
+        return {"status": "marked", "urgency_event_id": str(event.id)}
+
+
+@tool(ToolMetadata(
+    name="request_human_handoff",
+    description="Initiate one-tap human takeover. AI immediately ceases speaking and call transfers.",
+    input_schema={
+        "type": "object",
+        "properties": {"call_id": {"type": "string"}, "reason": {"type": "string"}},
+        "required": ["call_id"],
+    },
+    sensitive=False, llm_allowed=True, user_confirmation_required=False,
+))
+async def request_human_handoff(arguments: dict[str, Any]) -> dict[str, Any]:
+    from app.services.telephony import TelephonyService
+    call_id = _safe_uuid(arguments["call_id"])
+    with _get_db_session() as db:
+        svc = TelephonyService(db, "user_123")
+        res = svc.request_human_takeover(call_id)
+        return res
+
+
+@tool(ToolMetadata(
+    name="end_call",
+    description="Terminate call and initiate post-call intelligence processing.",
+    input_schema={
+        "type": "object",
+        "properties": {"call_id": {"type": "string"}},
+        "required": ["call_id"],
+    },
+    sensitive=False, llm_allowed=True, user_confirmation_required=False,
+))
+async def end_call(arguments: dict[str, Any]) -> dict[str, Any]:
+    from app.services.telephony import TelephonyService
+    call_id = _safe_uuid(arguments["call_id"])
+    with _get_db_session() as db:
+        svc = TelephonyService(db, "user_123")
+        res = svc.end_call(call_id)
+        return {"status": "ended", "result": res}
+
+

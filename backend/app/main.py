@@ -4,7 +4,13 @@ from fastapi import FastAPI
 # Import domain tools to self-register on startup
 import app.tools.domain  # noqa: F401
 from app.api.agent import router as agent_router
+from app.api.calls import router as calls_router
 from app.api.contacts import router as contacts_router
+from app.api.memory import router as memory_router
+from app.api.notifications import router as notifications_router
+from app.api.policy.delegation import router as delegation_router
+from app.api.policy.preferences import router as preferences_router
+from app.api.policy.status import router as status_router
 from app.api.relationships import router as rel_router
 from app.core.config import settings
 from app.core.logging import setup_logging
@@ -17,10 +23,18 @@ api_app = FastAPI(
     version=settings.VERSION,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
 )
+app = api_app
 
+# Core Routers
 api_app.include_router(agent_router, prefix=settings.API_V1_STR)
 api_app.include_router(contacts_router, prefix=settings.API_V1_STR)
 api_app.include_router(rel_router, prefix=settings.API_V1_STR)
+api_app.include_router(status_router, prefix=settings.API_V1_STR)
+api_app.include_router(delegation_router, prefix=settings.API_V1_STR)
+api_app.include_router(preferences_router, prefix=settings.API_V1_STR)
+api_app.include_router(calls_router, prefix=settings.API_V1_STR)
+api_app.include_router(notifications_router, prefix=settings.API_V1_STR)
+api_app.include_router(memory_router, prefix=settings.API_V1_STR)
 
 
 @api_app.get("/health")
