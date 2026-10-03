@@ -51,6 +51,10 @@ class Settings(BaseSettings):
     TTS_PROVIDER: str = "indic-tts"
     TTS_LANGUAGE: str = "ta"
     TTS_TIMEOUT_SECONDS: int = 10
+    INDIC_TTS_SERVER_URL: str | None = None
+    INDIC_TTS_MODELS_DIR: str = "models/indic-tts"
+    INDIC_TTS_DEFAULT_GENDER: str = "female"
+    INDIC_TTS_SUPPORTED_LANGUAGES: list[str] = ["ta", "en"]
 
     VAD_THRESHOLD: float = 0.5
     AUDIO_SAMPLE_RATE: int = 16000
