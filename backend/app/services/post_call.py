@@ -98,19 +98,26 @@ class PostCallService:
         # 3. Create Summary
         summary_text = self._generate_summary(call, transcripts, reason)
 
-        # 4. Save CallSummary
-        summary = CallSummary(
-            call_id=call.id,
-            caller_phone=call.caller_phone,
-            summary_text=summary_text,
-            intent=intent,
-            reason=reason,
-            urgency_level=urgency,
-            relationship_type="UNKNOWN",
-            relationship_confidence=1.0,
-            extra_metadata={"turns_count": len(transcripts)},
-        )
-        self.db.add(summary)
+        # 4. Save CallSummary (Idempotent: update if existing, else add)
+        existing_summary = self.db.scalars(
+            select(CallSummary).where(CallSummary.call_id == call.id)
+        ).first()
+
+        if existing_summary:
+            summary = existing_summary
+        else:
+            summary = CallSummary(
+                call_id=call.id,
+                caller_phone=call.caller_phone,
+                summary_text=summary_text,
+                intent=intent,
+                reason=reason,
+                urgency_level=urgency,
+                relationship_type="UNKNOWN",
+                relationship_confidence=1.0,
+                extra_metadata={"turns_count": len(transcripts)},
+            )
+            self.db.add(summary)
 
         # 5. Extract Actions & Callbacks
         extracted_actions = self._extract_actions(call, transcripts)
