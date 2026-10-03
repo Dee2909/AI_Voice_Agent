@@ -13,6 +13,7 @@ from app.api.policy.preferences import router as preferences_router
 from app.api.policy.status import router as status_router
 from app.api.prototype import router as prototype_router
 from app.api.relationships import router as rel_router
+from app.api.telephony import router as telephony_router
 from app.core.config import settings
 from app.core.logging import setup_logging
 
@@ -37,6 +38,7 @@ api_app.include_router(preferences_router, prefix=settings.API_V1_STR)
 api_app.include_router(calls_router, prefix=settings.API_V1_STR)
 api_app.include_router(notifications_router, prefix=settings.API_V1_STR)
 api_app.include_router(memory_router, prefix=settings.API_V1_STR)
+api_app.include_router(telephony_router, prefix=settings.API_V1_STR)
 
 
 @api_app.get("/health")

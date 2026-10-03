@@ -57,6 +57,19 @@ services:
       - ollama_data:/root/.ollama
     restart: unless-stopped
 
+  asterisk:
+    build:
+      context: .
+      dockerfile: telephony/asterisk/Dockerfile
+    ports:
+      - "5060:5060/udp"
+      - "5060:5060/tcp"
+      - "8088:8088"
+      - "10000-10100:10000-10100/udp"
+    restart: unless-stopped
+    depends_on:
+      - backend
+
 volumes:
   postgres_data:
   ollama_data:
