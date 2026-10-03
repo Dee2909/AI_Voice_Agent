@@ -8,7 +8,10 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.models.security import AuditLog, ContactPermission, SecurityEvent, SecuritySeverity
+from app.models.security import (
+    AuditLog,
+    ContactPermission,
+)
 
 API_KEY_PATTERNS = [
     re.compile(r"sk-[A-Za-z0-9_\-]{20,}", re.IGNORECASE),
@@ -61,16 +64,14 @@ class PrivacyFirewall:
             key_lower = k.lower()
 
             # Location filtering
-            if any(loc_term in key_lower for loc_term in ("location", "gps", "coordinates", "address")):
-                if not can_location:
-                    redactions_occurred = True
-                    continue
+            if any(loc_term in key_lower for loc_term in ("location", "gps", "coordinates", "address")) and not can_location:
+                redactions_occurred = True
+                continue
 
             # Schedule/Calendar filtering
-            if any(sched_term in key_lower for sched_term in ("schedule", "calendar", "meetings")):
-                if not can_schedule:
-                    redactions_occurred = True
-                    continue
+            if any(sched_term in key_lower for sched_term in ("schedule", "calendar", "meetings")) and not can_schedule:
+                redactions_occurred = True
+                continue
 
             # Financial filtering
             if any(fin_term in key_lower for fin_term in ("bank", "account", "card", "salary", "balance")):

@@ -5,7 +5,8 @@ Implements Section 21 (Security Controls) and Section 24 (Device/User authentica
 
 import hashlib
 import secrets
-from fastapi import Header, HTTPException
+
+from fastapi import Header
 
 
 def get_current_user_id(authorization: str | None = Header(None)) -> str:

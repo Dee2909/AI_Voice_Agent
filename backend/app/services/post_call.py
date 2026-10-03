@@ -22,8 +22,8 @@ from app.models.call import (
     CallStatus,
     CallSummary,
     CallTranscript,
-    UrgencyLevel,
     UrgencyEvent,
+    UrgencyLevel,
 )
 from app.models.contact import (
     AliasSource,
@@ -87,7 +87,6 @@ class PostCallService:
             .order_by(CallTranscript.timestamp)
         ).all()
 
-        transcript_texts = [f"{t.speaker.value}: {t.text}" for t in transcripts]
         full_text = " ".join([t.text for t in transcripts]).lower()
 
         # 1. Classify Urgency
@@ -142,10 +141,10 @@ class PostCallService:
         if call.status != CallStatus.HANDOFF:
             call.status = CallStatus.COMPLETED
             if not call.ended_at:
-                ended = datetime.datetime.now(datetime.timezone.utc)
+                ended = datetime.datetime.now(datetime.UTC)
                 started = call.started_at
                 if started.tzinfo is None:
-                    started = started.replace(tzinfo=datetime.timezone.utc)
+                    started = started.replace(tzinfo=datetime.UTC)
                 call.ended_at = ended
                 call.duration_seconds = max(1, int((ended - started).total_seconds()))
 

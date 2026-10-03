@@ -1,8 +1,7 @@
 import enum
-from typing import Any
 
-from sqlalchemy import Boolean, Column, DateTime, Enum as SQLEnum, ForeignKey, JSON, String, Text
-from sqlalchemy.sql import func
+from sqlalchemy import JSON, Boolean, Column, ForeignKey, String, Text
+from sqlalchemy import Enum as SQLEnum
 
 from app.models.base import BaseModel
 from app.models.call import UrgencyLevel

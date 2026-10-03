@@ -1,5 +1,5 @@
 import os
-import uuid
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -11,8 +11,6 @@ os.environ["MOCK_LLM_ENABLED"] = "true"
 
 from app.core.database import Base, get_db
 from app.main import api_app
-from app.models.call import Call, CallStatus, SpeakerType
-from app.models.contact import Contact, ContactRelationship, RelationshipType, SuggestionStatus
 
 engine = create_engine("sqlite:///./test.db", connect_args={"check_same_thread": False})
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

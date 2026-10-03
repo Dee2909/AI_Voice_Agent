@@ -14,8 +14,14 @@ from sqlalchemy.orm import Session
 from app.agents.orchestrator import get_orchestrator
 from app.core.database import get_db
 from app.core.security import get_current_user_id
-from app.models.call import Call, CallDirection, CallParticipant, CallStatus, CallSummary, CallTranscript, SpeakerType
-from app.services.post_call import PostCallService
+from app.models.call import (
+    Call,
+    CallDirection,
+    CallStatus,
+    CallSummary,
+    CallTranscript,
+    SpeakerType,
+)
 from app.services.telephony import TelephonyService
 
 router = APIRouter(prefix="/calls", tags=["calls"])

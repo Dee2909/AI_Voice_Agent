@@ -1,9 +1,8 @@
 import datetime
 import enum
-from typing import Any
 
-from sqlalchemy import Boolean, Column, DateTime, Enum as SQLEnum, ForeignKey, JSON, String, Text
-from sqlalchemy.sql import func
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, String, Text
+from sqlalchemy import Enum as SQLEnum
 
 from app.models.base import BaseModel
 
@@ -47,7 +46,7 @@ class SecurityEvent(BaseModel):
 
 
 def now_utc() -> datetime.datetime:
-    return datetime.datetime.now(datetime.timezone.utc)
+    return datetime.datetime.now(datetime.UTC)
 
 
 class DeviceSession(BaseModel):

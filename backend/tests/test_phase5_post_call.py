@@ -1,5 +1,5 @@
 import os
-import uuid
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -9,7 +9,6 @@ os.environ["ENVIRONMENT"] = "test"
 os.environ["MOCK_LLM_ENABLED"] = "true"
 
 from app.core.database import Base
-from app.models.base import BaseModel
 from app.models.call import (
     Call,
     CallDirection,
@@ -18,7 +17,7 @@ from app.models.call import (
     SpeakerType,
     UrgencyLevel,
 )
-from app.models.contact import Contact, RelationshipType
+from app.models.contact import Contact
 from app.models.notification import Notification
 from app.services.post_call import PostCallService
 

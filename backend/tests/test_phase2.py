@@ -321,7 +321,6 @@ def test_api_agent_message_endpoint() -> None:
     assert "Arun" in data["response"]
 
 def test_api_tool_test_endpoint_dev_mode() -> None:
-    import os
     from app.core.config import settings
     settings.ENVIRONMENT = "dev"
     response = client.post(

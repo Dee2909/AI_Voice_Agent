@@ -25,6 +25,7 @@ def tool(metadata: ToolMetadata) -> Any:
 # ─────────────────────────────────────────────────────────────────
 def _get_db_session() -> Any:
     import os
+
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
     if os.environ.get("ENVIRONMENT") == "test":
@@ -103,6 +104,7 @@ async def get_contact_relationship(arguments: dict[str, Any]) -> dict[str, Any]:
 ))
 async def search_contacts(arguments: dict[str, Any]) -> dict[str, Any]:
     from sqlalchemy import select
+
     from app.models.contact import Contact
     query = arguments["query"].lower()
     with _get_db_session() as db:
@@ -131,8 +133,8 @@ async def search_contacts(arguments: dict[str, Any]) -> dict[str, Any]:
     sensitive=True, llm_allowed=True, user_confirmation_required=True,
 ))
 async def create_relationship_suggestion(arguments: dict[str, Any]) -> dict[str, Any]:
-    from app.models.contact import Contact, RelationshipType
     from app.core.utils import normalize_phone_number
+    from app.models.contact import Contact, RelationshipType
     from app.services.contact import ContactIdentityService
     phone = arguments["phone_number"]
     with _get_db_session() as db:
@@ -218,6 +220,7 @@ async def get_active_delegation(arguments: dict[str, Any]) -> dict[str, Any]:
 ))
 async def evaluate_call_policy(arguments: dict[str, Any]) -> dict[str, Any]:
     import uuid as _uuid
+
     from app.schemas.policy import PolicyEvaluationRequest
     from app.services.policy import PolicyEngine
     with _get_db_session() as db:
@@ -315,7 +318,13 @@ async def get_contact_context(arguments: dict[str, Any]) -> dict[str, Any]:
     sensitive=False, llm_allowed=True, user_confirmation_required=False,
 ))
 async def save_message(arguments: dict[str, Any]) -> dict[str, Any]:
-    from app.models.call import CallAction, CallTranscript, SpeakerType, ActionType, ActionStatus
+    from app.models.call import (
+        ActionStatus,
+        ActionType,
+        CallAction,
+        CallTranscript,
+        SpeakerType,
+    )
     call_id = _safe_uuid(arguments["call_id"])
     msg = arguments["message"]
     with _get_db_session() as db:
@@ -394,7 +403,7 @@ async def save_call_summary(arguments: dict[str, Any]) -> dict[str, Any]:
     sensitive=False, llm_allowed=True, user_confirmation_required=False,
 ))
 async def create_callback_request(arguments: dict[str, Any]) -> dict[str, Any]:
-    from app.models.call import Callback, ActionStatus, UrgencyLevel
+    from app.models.call import ActionStatus, Callback, UrgencyLevel
     from app.models.notification import Notification, NotificationType
 
     reason = arguments["reason"]
@@ -461,8 +470,8 @@ async def schedule_callback(arguments: dict[str, Any]) -> dict[str, Any]:
     sensitive=False, llm_allowed=True, user_confirmation_required=False,
 ))
 async def notify_user(arguments: dict[str, Any]) -> dict[str, Any]:
-    from app.models.notification import Notification, NotificationType
     from app.models.call import UrgencyLevel
+    from app.models.notification import Notification, NotificationType
 
     msg = arguments["message"]
     urgency_str = arguments.get("urgency", "NORMAL").upper()

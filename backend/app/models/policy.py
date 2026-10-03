@@ -1,12 +1,12 @@
 import enum
-from typing import Any
-import datetime
-import uuid
 
-from sqlalchemy import Column, String, DateTime, Boolean, ForeignKey, JSON, Enum as SQLEnum
-from sqlalchemy.orm import relationship, Mapped
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, String
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy.orm import Mapped, relationship
+
 from app.models.base import BaseModel
 from app.models.contact import RelationshipType
+
 
 class UserStatusType(enum.Enum):
     AVAILABLE = "AVAILABLE"

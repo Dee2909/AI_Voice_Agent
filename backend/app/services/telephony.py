@@ -11,11 +11,17 @@ import structlog
 from sqlalchemy.orm import Session
 
 from app.core.utils import normalize_phone_number
-from app.models.call import Call, CallDirection, CallParticipant, CallStatus, CallTranscript, SpeakerType, UrgencyLevel
-from app.models.contact import Contact, RelationshipType
+from app.models.call import (
+    Call,
+    CallDirection,
+    CallParticipant,
+    CallStatus,
+    CallTranscript,
+    SpeakerType,
+    UrgencyLevel,
+)
 from app.models.notification import Notification, NotificationType
 from app.schemas.policy import PolicyEvaluationRequest
-from app.security.privacy_firewall import PrivacyFirewall
 from app.services.contact import ContactIdentityService
 from app.services.policy import PolicyEngine
 from app.services.post_call import PostCallService
@@ -50,7 +56,7 @@ class TelephonyService:
             contact_id=contact.id if contact else None,
             status=CallStatus.INCOMING,
             direction=direction,
-            started_at=datetime.datetime.now(datetime.timezone.utc),
+            started_at=datetime.datetime.now(datetime.UTC),
         )
         self.db.add(call)
         self.db.commit()
@@ -122,7 +128,7 @@ class TelephonyService:
             speaker=speaker,
             text=text,
             language=language,
-            timestamp=datetime.datetime.now(datetime.timezone.utc),
+            timestamp=datetime.datetime.now(datetime.UTC),
         )
         self.db.add(transcript)
         self.db.commit()
@@ -147,7 +153,7 @@ class TelephonyService:
             speaker=SpeakerType.SYSTEM,
             text="AI stopped speaking: Human takeover initiated by user.",
             language="en",
-            timestamp=datetime.datetime.now(datetime.timezone.utc),
+            timestamp=datetime.datetime.now(datetime.UTC),
         )
         self.db.add(sys_turn)
 
@@ -182,10 +188,10 @@ class TelephonyService:
         if call.status != CallStatus.HANDOFF:
             call.status = CallStatus.COMPLETED
 
-        ended = datetime.datetime.now(datetime.timezone.utc)
+        ended = datetime.datetime.now(datetime.UTC)
         started = call.started_at
         if started.tzinfo is None:
-            started = started.replace(tzinfo=datetime.timezone.utc)
+            started = started.replace(tzinfo=datetime.UTC)
         call.ended_at = ended
         call.duration_seconds = max(1, int((ended - started).total_seconds()))
         self.db.commit()

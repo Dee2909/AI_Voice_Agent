@@ -1,15 +1,23 @@
 import datetime
 import uuid
-from typing import Optional, List, Any
-from pydantic import BaseModel, ConfigDict, Field
-from app.models.policy import UserStatusType, StatusSource, PolicyDecision, DelegationSource
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict
+
 from app.models.contact import RelationshipType
+from app.models.policy import (
+    DelegationSource,
+    PolicyDecision,
+    StatusSource,
+    UserStatusType,
+)
+
 
 class UserStatusBase(BaseModel):
     status: UserStatusType
     source: StatusSource
-    starts_at: Optional[datetime.datetime] = None
-    expires_at: Optional[datetime.datetime] = None
+    starts_at: datetime.datetime | None = None
+    expires_at: datetime.datetime | None = None
 
 class UserStatusOut(UserStatusBase):
     id: uuid.UUID
@@ -30,17 +38,17 @@ class DelegationRuleOut(DelegationRuleBase):
 class DelegationBase(BaseModel):
     mode: UserStatusType
     active: bool = True
-    starts_at: Optional[datetime.datetime] = None
-    expires_at: Optional[datetime.datetime] = None
+    starts_at: datetime.datetime | None = None
+    expires_at: datetime.datetime | None = None
     source: DelegationSource
 
 class DelegationCreate(DelegationBase):
-    rules: List[DelegationRuleBase] = []
+    rules: list[DelegationRuleBase] = []
 
 class DelegationOut(DelegationBase):
     id: uuid.UUID
     user_id: str
-    rules: List[DelegationRuleOut] = []
+    rules: list[DelegationRuleOut] = []
     created_at: datetime.datetime
     updated_at: datetime.datetime
     model_config = ConfigDict(from_attributes=True)
@@ -61,7 +69,7 @@ class UserPreferenceOut(UserPreferenceBase):
 class ContactPolicyRuleBase(BaseModel):
     contact_id: uuid.UUID
     action: PolicyDecision
-    conditions: Optional[Any] = None
+    conditions: Any | None = None
 
 class ContactPolicyRuleOut(ContactPolicyRuleBase):
     id: uuid.UUID
@@ -69,7 +77,7 @@ class ContactPolicyRuleOut(ContactPolicyRuleBase):
     model_config = ConfigDict(from_attributes=True)
 
 class PolicyEvaluationRequest(BaseModel):
-    contact_id: Optional[uuid.UUID] = None
+    contact_id: uuid.UUID | None = None
     relationship: str
     relationship_status: str
     urgency: str = "NORMAL"

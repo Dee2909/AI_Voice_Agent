@@ -3,7 +3,6 @@ Conversation Memory Service: stores and retrieves reusable contact-level facts.
 Enforces selective memory retrieval and privacy filtering (Section 17).
 """
 
-from typing import Any
 import uuid
 
 from sqlalchemy import select

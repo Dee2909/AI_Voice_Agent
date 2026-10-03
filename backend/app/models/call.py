@@ -1,19 +1,19 @@
 import datetime
 import enum
-import uuid
-from typing import Any
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     Column,
     DateTime,
-    Enum as SQLEnum,
     Float,
     ForeignKey,
     Integer,
-    JSON,
     String,
     Text,
+)
+from sqlalchemy import (
+    Enum as SQLEnum,
 )
 from sqlalchemy.orm import relationship
 
@@ -62,7 +62,7 @@ class ActionStatus(str, enum.Enum):
 
 
 def now_utc() -> datetime.datetime:
-    return datetime.datetime.now(datetime.timezone.utc)
+    return datetime.datetime.now(datetime.UTC)
 
 
 class Call(BaseModel):

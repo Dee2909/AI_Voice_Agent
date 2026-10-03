@@ -1,27 +1,35 @@
 import datetime
 import uuid
-from typing import Optional, List, Dict, Any
-from sqlalchemy.orm import Session
-from sqlalchemy import select, and_, or_
+from typing import Any
 
-from app.models.policy import (
-    UserStatus, UserStatusType, StatusSource,
-    Delegation, DelegationRule, DelegationSource,
-    UserPreference, ContactPolicyRule, PolicyDecision,
-    PolicyAuditLog
-)
+from sqlalchemy import and_, or_, select
+from sqlalchemy.orm import Session
+
 from app.models.contact import RelationshipType
+from app.models.policy import (
+    ContactPolicyRule,
+    Delegation,
+    DelegationRule,
+    DelegationSource,
+    PolicyAuditLog,
+    PolicyDecision,
+    StatusSource,
+    UserPreference,
+    UserStatus,
+    UserStatusType,
+)
 from app.schemas.policy import PolicyEvaluationRequest, PolicyEvaluationResponse
 
+
 def now_utc() -> datetime.datetime:
-    return datetime.datetime.now(datetime.timezone.utc)
+    return datetime.datetime.now(datetime.UTC)
 
 class UserStatusService:
     def __init__(self, db: Session, user_id: str):
         self.db = db
         self.user_id = user_id
 
-    def get_current_status(self) -> Optional[UserStatus]:
+    def get_current_status(self) -> UserStatus | None:
         now = now_utc()
         # Find active statuses that haven't expired
         statuses = self.db.scalars(
@@ -52,7 +60,7 @@ class UserStatusService:
         
         return min(statuses, key=lambda s: priority.get(s.source, 99))
 
-    def set_status(self, status: UserStatusType, source: StatusSource, expires_at: Optional[datetime.datetime] = None) -> UserStatus:
+    def set_status(self, status: UserStatusType, source: StatusSource, expires_at: datetime.datetime | None = None) -> UserStatus:
         # Clear existing manual if this is manual
         if source == StatusSource.MANUAL:
             self.clear_status(StatusSource.MANUAL)
@@ -63,7 +71,7 @@ class UserStatusService:
         self.db.refresh(us)
         return us
 
-    def clear_status(self, source: Optional[StatusSource] = None) -> None:
+    def clear_status(self, source: StatusSource | None = None) -> None:
         query = select(UserStatus).where(UserStatus.user_id == self.user_id)
         if source:
             query = query.where(UserStatus.source == source)
@@ -76,7 +84,7 @@ class DelegationService:
         self.db = db
         self.user_id = user_id
 
-    def get_active_delegation(self) -> Optional[Delegation]:
+    def get_active_delegation(self) -> Delegation | None:
         now = now_utc()
         delegation = self.db.scalars(
             select(Delegation).where(
@@ -91,7 +99,7 @@ class DelegationService:
         return delegation
 
     def create_delegation(
-        self, mode: UserStatusType, source: DelegationSource, expires_at: Optional[datetime.datetime], rules: List[Dict[str, Any]]
+        self, mode: UserStatusType, source: DelegationSource, expires_at: datetime.datetime | None, rules: list[dict[str, Any]]
     ) -> Delegation:
         # Deactivate current active ones
         existing = self.db.scalars(select(Delegation).where(Delegation.user_id == self.user_id, Delegation.active == True)).all()

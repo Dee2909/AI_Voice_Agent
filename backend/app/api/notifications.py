@@ -28,7 +28,7 @@ def list_notifications(
     query = select(Notification).where(Notification.user_id == user_id)
 
     if unread_only:
-        query = query.where(Notification.is_read == False)  # noqa: E712
+        query = query.where(Notification.is_read == False)
 
     if urgency:
         query = query.where(Notification.urgency == UrgencyLevel(urgency.upper()))
@@ -74,6 +74,6 @@ def get_unread_count(
     count = db.scalar(
         select(func.count(Notification.id))
         .where(Notification.user_id == user_id)
-        .where(Notification.is_read == False)  # noqa: E712
+        .where(Notification.is_read == False)
     )
     return {"unread_count": count or 0}
